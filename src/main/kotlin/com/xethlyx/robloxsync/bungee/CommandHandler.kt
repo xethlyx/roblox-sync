@@ -165,12 +165,19 @@ class CommandHandler: Command("roblox"), TabExecutor {
                     return
                 }
 
-                val componentBuilder = ComponentBuilder()
-                componentBuilder.append(prefix)
-                componentBuilder.append(ChatColor.GRAY.toString() + "Updated user " + player.displayName + " ")
-                componentBuilder.append(formatRobloxData(robloxData))
+                val updatedComponentBuilder = ComponentBuilder()
+                updatedComponentBuilder.append(prefix)
+                updatedComponentBuilder.append(ChatColor.GRAY.toString() + "You are now verified as ")
+                updatedComponentBuilder.append(formatRobloxData(robloxData))
+                player.sendMessage(*updatedComponentBuilder.create())
 
-                sender.sendMessage(*componentBuilder.create())
+                if (player != sender) {
+                    val componentBuilder = ComponentBuilder()
+                    componentBuilder.append(prefix)
+                    componentBuilder.append(ChatColor.GRAY.toString() + "Updated user " + player.displayName + " ")
+                    componentBuilder.append(formatRobloxData(robloxData))
+                    sender.sendMessage(*componentBuilder.create())
+                }
             }
             "verify" -> {
                 if (!sender.hasPermission("xethlyx.roblox.admin")) {
@@ -209,12 +216,19 @@ class CommandHandler: Command("roblox"), TabExecutor {
 
                 MessagingHelper.updateUsername(player, robloxData.username)
 
-                val componentBuilder = ComponentBuilder()
-                componentBuilder.append(prefix)
-                componentBuilder.append(ChatColor.GRAY.toString() + "Verified user " + player.displayName + " ")
-                componentBuilder.append(formatRobloxData(robloxData))
+                val updatedComponentBuilder = ComponentBuilder()
+                updatedComponentBuilder.append(prefix)
+                updatedComponentBuilder.append(ChatColor.GRAY.toString() + "You are now verified as ")
+                updatedComponentBuilder.append(formatRobloxData(robloxData))
+                player.sendMessage(*updatedComponentBuilder.create())
 
-                sender.sendMessage(*componentBuilder.create())
+                if (player != sender) {
+                    val senderComponentBuilder = ComponentBuilder()
+                    senderComponentBuilder.append(prefix)
+                    senderComponentBuilder.append(ChatColor.GRAY.toString() + "Verified user " + player.displayName + " ")
+                    senderComponentBuilder.append(formatRobloxData(robloxData))
+                    sender.sendMessage(*senderComponentBuilder.create())
+                }
             }
             "unverify" -> {
                 if (!sender.hasPermission("xethlyx.roblox.admin")) {
@@ -245,11 +259,17 @@ class CommandHandler: Command("roblox"), TabExecutor {
                     return
                 }
 
-                val componentBuilder = ComponentBuilder()
-                componentBuilder.append(prefix)
-                componentBuilder.append(ChatColor.GRAY.toString() + "Unverified user " + player.displayName)
+                val updatedComponentBuilder = ComponentBuilder()
+                updatedComponentBuilder.append(prefix)
+                updatedComponentBuilder.append(ChatColor.GRAY.toString() + "You are now unverified.")
+                player.sendMessage(*updatedComponentBuilder.create())
 
-                sender.sendMessage(*componentBuilder.create())
+                if (player != sender) {
+                    val componentBuilder = ComponentBuilder()
+                    componentBuilder.append(prefix)
+                    componentBuilder.append(ChatColor.GRAY.toString() + "Unverified user " + player.displayName)
+                    sender.sendMessage(*componentBuilder.create())
+                }
             }
             else -> {
                 sender.sendMessage(*invalidUsage(null))
