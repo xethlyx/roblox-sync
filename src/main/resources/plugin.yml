@@ -1,0 +1,4 @@
+main: com.xethlyx.robloxsync.spigot.RobloxSync
+author: xethlyx
+name: RobloxSyncSpigotHelper
+version: ${project.version}

@@ -1,0 +1,17 @@
+main: com.xethlyx.robloxsync.bungee.RobloxSync
+author: xethlyx
+name: RobloxSync
+version: ${project.version}
+depends: ["LuckPerms"]
+commands:
+  roblox:
+    description: Roblox verification commands
+    aliases: ["rbx"]
+    usage: /roblox <verify/update/unverify/identify> <player>
+permissions:
+  xethlyx.roblox.identify:
+    description: Identify a player
+  xethlyx.roblox.admin:
+    description: Allows updating, verifying and unverifying
+  xethlyx.roblox.update:
+    description: Allows updating self
