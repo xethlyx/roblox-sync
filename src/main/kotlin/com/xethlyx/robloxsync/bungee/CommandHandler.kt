@@ -60,6 +60,11 @@ class CommandHandler: Command("roblox"), TabExecutor {
     }
 
     override fun execute(sender: CommandSender, args: Array<out String>) {
+        if (args.isEmpty()) {
+            sender.sendMessage(*invalidUsage(null))
+            return
+        }
+
         when(args[0]) {
             "identify" -> {
                 if (!sender.hasPermission("xethlyx.roblox.identify")) {
