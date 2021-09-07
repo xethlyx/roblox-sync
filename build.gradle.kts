@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.xethlyx"
-version = "1.0-SNAPSHOT"
+version = System.getenv("X_VERSION") ?: "DEV"
 
 repositories {
     mavenCentral()
@@ -33,4 +33,10 @@ tasks.register<Copy>("devbuild") {
 
 tasks.withType<KotlinCompile>() {
     kotlinOptions.jvmTarget = "1.8"
+}
+
+tasks.withType<ProcessResources>() {
+    filesMatching("*.yml") {
+        expand("version" to project.version)
+    }
 }

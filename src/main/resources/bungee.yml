@@ -1,7 +1,7 @@
 main: com.xethlyx.robloxsync.bungee.RobloxSync
 author: xethlyx
 name: RobloxSync
-version: ${project.version}
+version: ${version}
 depends: ["LuckPerms"]
 commands:
   roblox:
