@@ -176,6 +176,7 @@ class CommandHandler: Command("roblox"), TabExecutor {
                 }
 
                 LuckPermsHelper.setRoblox(player, robloxData.id)
+                MessagingHelper.updateUsername(player, robloxData.username)
 
                 val componentBuilder = ComponentBuilder()
                 componentBuilder.append(prefix)
