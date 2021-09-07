@@ -29,6 +29,7 @@ public class CompatCommandHandler implements TabExecutor {
             addIf(args[0], "identify", matches);
             addIf(args[0], "verify", matches);
             addIf(args[0], "unverify", matches);
+            addIf(args[0], "update", matches);
         } else {
             for (ProxiedPlayer player : ProxyServer.getInstance().getPlayers()) {
                 matches.add(player.getName());
