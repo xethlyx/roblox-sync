@@ -2,8 +2,10 @@ package com.xethlyx.robloxsync.bungee
 
 import net.luckperms.api.model.user.User
 import net.luckperms.api.node.NodeType
+import net.luckperms.api.node.types.InheritanceNode
 import net.luckperms.api.node.types.MetaNode
 import net.md_5.bungee.api.connection.ProxiedPlayer
+import java.util.stream.Collectors
 
 object LuckPermsHelper {
     fun getRoblox(player: ProxiedPlayer): Number? {
@@ -12,13 +14,17 @@ object LuckPermsHelper {
         return userId.toInt()
     }
 
-    fun resetRoblox(player: ProxiedPlayer): Boolean {
-        resetRoblox(RobloxSync.luckPerms!!.userManager.getUser(player.uniqueId) ?: return false)
+    fun resetRoblox(player: ProxiedPlayer, save: Boolean = false): Boolean {
+        resetRoblox(RobloxSync.luckPerms!!.userManager.getUser(player.uniqueId) ?: return false, save)
         return true
     }
 
-    fun resetRoblox(user: User) {
+    fun resetRoblox(user: User, save: Boolean = false) {
         user.data().clear(NodeType.META.predicate { mn -> mn.metaKey == "roblox" })
+
+        if (save) {
+            RobloxSync.luckPerms!!.userManager.saveUser(user)
+        }
     }
 
     fun setRoblox(player: ProxiedPlayer, userId: Number): Boolean {
@@ -29,6 +35,38 @@ object LuckPermsHelper {
         user.data().add(metaNode)
 
         RobloxSync.luckPerms!!.userManager.saveUser(user)
+
+        return true
+    }
+
+    fun addGroup(player: ProxiedPlayer, save: Boolean = false): Boolean {
+        val user = RobloxSync.luckPerms!!.userManager.getUser(player.uniqueId) ?: return false
+
+        val groups = user.getNodes(NodeType.INHERITANCE)
+            .map(InheritanceNode::getGroupName)
+
+        if (groups.contains("verified")) {
+            // Already done, we can skip everything
+            return true
+        }
+
+        val inheritanceNode = InheritanceNode.builder("verified").build()
+        user.data().add(inheritanceNode)
+
+        if (save) {
+            RobloxSync.luckPerms!!.userManager.saveUser(user)
+        }
+
+        return true
+    }
+
+    fun removeGroup(player: ProxiedPlayer, save: Boolean = false): Boolean {
+        val user = RobloxSync.luckPerms!!.userManager.getUser(player.uniqueId) ?: return false
+        user.data().clear(NodeType.INHERITANCE.predicate { mn -> mn.groupName == "verified" })
+
+        if (save) {
+            RobloxSync.luckPerms!!.userManager.saveUser(user)
+        }
 
         return true
     }

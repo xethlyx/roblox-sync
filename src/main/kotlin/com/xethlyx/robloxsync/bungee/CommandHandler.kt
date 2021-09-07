@@ -103,7 +103,6 @@ class CommandHandler: Command("roblox"), TabExecutor {
                 sender.sendMessage(*componentBuilder.create())
             }
             "update" -> {
-
                 if (args.size > 2) {
                     sender.sendMessage(*invalidUsage(null))
                     return
@@ -138,7 +137,17 @@ class CommandHandler: Command("roblox"), TabExecutor {
 
                 val robloxId = LuckPermsHelper.getRoblox(player)
                 if (robloxId == null) {
-                    sender.sendMessage(*internalError("Player is not verified"))
+                    val groupSuccess = LuckPermsHelper.removeGroup(player, true)
+                    if (!groupSuccess) {
+                        sender.sendMessage(*internalError("Player internal data could not be fetched."))
+                        return
+                    }
+
+                    val componentBuilder = ComponentBuilder()
+                    componentBuilder.append(prefix)
+                    componentBuilder.append(ChatColor.GRAY.toString() + "Updated user " + player.displayName + " (Unverified)")
+
+                    sender.sendMessage(*componentBuilder.create())
                     return
                 }
 
@@ -149,6 +158,12 @@ class CommandHandler: Command("roblox"), TabExecutor {
                 }
 
                 MessagingHelper.updateUsername(player, robloxData.username)
+
+                val groupSuccess = LuckPermsHelper.addGroup(player, true)
+                if (!groupSuccess) {
+                    sender.sendMessage(*internalError("Player internal data could not be fetched."))
+                    return
+                }
 
                 val componentBuilder = ComponentBuilder()
                 componentBuilder.append(prefix)
@@ -180,7 +195,18 @@ class CommandHandler: Command("roblox"), TabExecutor {
                     return
                 }
 
-                LuckPermsHelper.setRoblox(player, robloxData.id)
+                val metaSuccess = LuckPermsHelper.setRoblox(player, robloxData.id)
+                if (!metaSuccess) {
+                    sender.sendMessage(*internalError("Player internal data could not be fetched."))
+                    return
+                }
+
+                val groupSuccess = LuckPermsHelper.addGroup(player, true)
+                if (!groupSuccess) {
+                    sender.sendMessage(*internalError("Player internal data could not be fetched."))
+                    return
+                }
+
                 MessagingHelper.updateUsername(player, robloxData.username)
 
                 val componentBuilder = ComponentBuilder()
@@ -207,8 +233,14 @@ class CommandHandler: Command("roblox"), TabExecutor {
                     return
                 }
 
-                val success = LuckPermsHelper.resetRoblox(player)
-                if (!success) {
+                val metaSuccess = LuckPermsHelper.resetRoblox(player, true)
+                if (!metaSuccess) {
+                    sender.sendMessage(*internalError("Player internal data could not be fetched."))
+                    return
+                }
+
+                val groupSuccess = LuckPermsHelper.removeGroup(player, true)
+                if (!groupSuccess) {
                     sender.sendMessage(*internalError("Player internal data could not be fetched."))
                     return
                 }
