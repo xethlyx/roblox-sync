@@ -3,6 +3,7 @@ author: xethlyx
 name: RobloxSync
 version: ${version}
 depends: ["LuckPerms"]
+softdepends: ["RedisBungee"]
 commands:
   roblox:
     description: Roblox verification commands

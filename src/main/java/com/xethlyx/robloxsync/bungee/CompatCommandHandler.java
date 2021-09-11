@@ -31,8 +31,16 @@ public class CompatCommandHandler implements TabExecutor {
             addIf(args[0], "unverify", matches);
             addIf(args[0], "update", matches);
         } else {
-            for (ProxiedPlayer player : ProxyServer.getInstance().getPlayers()) {
-                matches.add(player.getName());
+            if (RobloxSync.Companion.getRedisBungee() == null) {
+                for (ProxiedPlayer player : ProxyServer.getInstance().getPlayers()) {
+                    if (!player.getName().startsWith(args[1])) continue;
+                    matches.add(player.getName());
+                }
+            } else {
+                for (AnyPlayer player : RedisHelper.INSTANCE.getAllPlayers()) {
+                    if (!player.getUsername().startsWith(args[1])) continue;
+                    matches.add(player.getUsername());
+                }
             }
         }
 

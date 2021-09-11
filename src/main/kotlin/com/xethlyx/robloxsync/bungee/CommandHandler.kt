@@ -11,7 +11,26 @@ import net.md_5.bungee.api.plugin.TabExecutor
 
 class CommandHandler: Command("roblox"), TabExecutor {
     private val compatCommandHandler = CompatCommandHandler()
-    private val prefix = TextComponent(ChatColor.DARK_GRAY.toString() + "[" + ChatColor.RED + "Sync" + ChatColor.DARK_GRAY + "] ")
+
+    companion object {
+        val prefix = TextComponent(ChatColor.DARK_GRAY.toString() + "[" + ChatColor.RED + "Sync" + ChatColor.DARK_GRAY + "] ")
+
+        fun formatRobloxData(data: RobloxData): BaseComponent {
+            val component = TextComponent(ChatColor.AQUA.toString() + "[@" + data.username + "]")
+
+            val componentBuilder = ComponentBuilder()
+            componentBuilder.append(ChatColor.AQUA.toString() + "[@" + data.username + "]" + "\n")
+            componentBuilder.append(ChatColor.GRAY.toString() + "Display Name" + ChatColor.DARK_GRAY.toString() + ": " + ChatColor.GRAY.toString() + data.displayName + "\n")
+            componentBuilder.append(ChatColor.GRAY.toString() + "Join Date" + ChatColor.DARK_GRAY.toString() + ": " + ChatColor.GRAY.toString() + data.created + "\n")
+            componentBuilder.append(ChatColor.GRAY.toString() + "User ID" + ChatColor.DARK_GRAY.toString() + ": " + ChatColor.GRAY.toString() + data.id + "\n")
+            componentBuilder.append(ChatColor.GRAY.toString() + "Is Banned" + ChatColor.DARK_GRAY.toString() + ": " + ChatColor.GRAY.toString() + data.isBanned)
+
+            component.hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, componentBuilder.create())
+            component.clickEvent = ClickEvent(ClickEvent.Action.OPEN_URL, "https://www.roblox.com/users/" + data.id + "/profile")
+
+            return component
+        }
+    }
 
     private fun invalidUsage(message: String?): Array<out BaseComponent> {
         val componentBuilder = ComponentBuilder()
@@ -35,28 +54,18 @@ class CommandHandler: Command("roblox"), TabExecutor {
         return componentBuilder.create()
     }
 
-    private fun getPlayer(search: String): ProxiedPlayer? {
-        for (player in ProxyServer.getInstance().players) {
-            if (player.name == search) return player
+    private fun getPlayer(search: String): AnyPlayer? {
+        if (RobloxSync.redisBungee != null) {
+            for (player in RedisHelper.getAllPlayers()) {
+                if (player.username == search) return player
+            }
+        } else {
+            for (player in ProxyServer.getInstance().players) {
+                if (player.name == search) return AnyPlayer(player)
+            }
         }
 
         return null
-    }
-
-    private fun formatRobloxData(data: RobloxData): BaseComponent {
-        val component = TextComponent(ChatColor.AQUA.toString() + "[@" + data.username + "]")
-
-        val componentBuilder = ComponentBuilder()
-        componentBuilder.append(ChatColor.AQUA.toString() + "[@" + data.username + "]" + "\n")
-        componentBuilder.append(ChatColor.GRAY.toString() + "Display Name" + ChatColor.DARK_GRAY.toString() + ": " + ChatColor.GRAY.toString() + data.displayName + "\n")
-        componentBuilder.append(ChatColor.GRAY.toString() + "Join Date" + ChatColor.DARK_GRAY.toString() + ": " + ChatColor.GRAY.toString() + data.created + "\n")
-        componentBuilder.append(ChatColor.GRAY.toString() + "User ID" + ChatColor.DARK_GRAY.toString() + ": " + ChatColor.GRAY.toString() + data.id + "\n")
-        componentBuilder.append(ChatColor.GRAY.toString() + "Is Banned" + ChatColor.DARK_GRAY.toString() + ": " + ChatColor.GRAY.toString() + data.isBanned)
-
-        component.hoverEvent = HoverEvent(HoverEvent.Action.SHOW_TEXT, componentBuilder.create())
-        component.clickEvent = ClickEvent(ClickEvent.Action.OPEN_URL, "https://www.roblox.com/users/" + data.id + "/profile")
-
-        return component
     }
 
     override fun execute(sender: CommandSender, args: Array<out String>) {
@@ -83,24 +92,26 @@ class CommandHandler: Command("roblox"), TabExecutor {
                     return
                 }
 
-                val robloxId = LuckPermsHelper.getRoblox(player)
-                if (robloxId == null) {
-                    sender.sendMessage(*internalError("Player is not verified"))
-                    return
-                }
+                LuckPermsHelper.getRoblox(player.uuid)
+                    .thenAccept() { robloxId ->
+                        if (robloxId == null) {
+                            sender.sendMessage(*internalError("Player is not verified."))
+                            return@thenAccept
+                        }
 
-                val robloxData = RobloxData.from(robloxId)
-                if (robloxData == null) {
-                    sender.sendMessage(*internalError("Player data could not be fetched"))
-                    return
-                }
+                        val robloxData = RobloxData.from(robloxId)
+                        if (robloxData == null) {
+                            sender.sendMessage(*internalError("Player data could not be fetched."))
+                            return@thenAccept
+                        }
 
-                val componentBuilder = ComponentBuilder()
-                componentBuilder.append(prefix)
-                componentBuilder.append(ChatColor.GRAY.toString() + "Found user: ")
-                componentBuilder.append(formatRobloxData(robloxData))
+                        val componentBuilder = ComponentBuilder()
+                        componentBuilder.append(prefix)
+                        componentBuilder.append(ChatColor.GRAY.toString() + "Found user: ")
+                        componentBuilder.append(formatRobloxData(robloxData))
 
-                sender.sendMessage(*componentBuilder.create())
+                        sender.sendMessage(*componentBuilder.create())
+                    }
             }
             "update" -> {
                 if (args.size > 2) {
@@ -113,13 +124,18 @@ class CommandHandler: Command("roblox"), TabExecutor {
                     return
                 }
 
-                val player: ProxiedPlayer = if (args.size == 1) {
+                val player: AnyPlayer = if (args.size == 1) {
                     if (!sender.hasPermission("xethlyx.roblox.update")) {
                         sender.sendMessage(*internalError("No permission"))
                         return
                     }
 
-                    sender as ProxiedPlayer
+                    if (sender !is ProxiedPlayer) {
+                        sender.sendMessage(*invalidUsage(null))
+                        return
+                    }
+
+                    AnyPlayer(sender.uniqueId)
                 } else {
                     if (!sender.hasPermission("xethlyx.roblox.admin")) {
                         sender.sendMessage(*internalError("No permission"))
@@ -135,49 +151,26 @@ class CommandHandler: Command("roblox"), TabExecutor {
                     player
                 }
 
-                val robloxId = LuckPermsHelper.getRoblox(player)
-                if (robloxId == null) {
-                    val groupSuccess = LuckPermsHelper.removeGroup(player, true)
-                    if (!groupSuccess) {
-                        sender.sendMessage(*internalError("Player internal data could not be fetched."))
-                        return
+                LuckPermsHelper.getRoblox(player.uuid)
+                    .thenAccept { robloxId ->
+                        if (robloxId == null) {
+                            LuckPermsHelper.removeGroup(player.uuid, true)
+
+                            AnyPlayer.didUnverifyPlayer(sender, player)
+                            return@thenAccept
+                        }
+
+                        val robloxData = RobloxData.from(robloxId)
+                        if (robloxData == null) {
+                            sender.sendMessage(*internalError("Player data could not be fetched"))
+                            return@thenAccept
+                        }
+
+                        // MessagingHelper.updateUsername(player.getProxiedPlayer(), robloxData.username)
+
+                        LuckPermsHelper.addGroup(player.uuid, true)
+                        AnyPlayer.didVerifyPlayer(sender, player, robloxData)
                     }
-
-                    val componentBuilder = ComponentBuilder()
-                    componentBuilder.append(prefix)
-                    componentBuilder.append(ChatColor.GRAY.toString() + "Updated user " + player.displayName + " (Unverified)")
-
-                    sender.sendMessage(*componentBuilder.create())
-                    return
-                }
-
-                val robloxData = RobloxData.from(robloxId)
-                if (robloxData == null) {
-                    sender.sendMessage(*internalError("Player data could not be fetched"))
-                    return
-                }
-
-                MessagingHelper.updateUsername(player, robloxData.username)
-
-                val groupSuccess = LuckPermsHelper.addGroup(player, true)
-                if (!groupSuccess) {
-                    sender.sendMessage(*internalError("Player internal data could not be fetched."))
-                    return
-                }
-
-                val updatedComponentBuilder = ComponentBuilder()
-                updatedComponentBuilder.append(prefix)
-                updatedComponentBuilder.append(ChatColor.GRAY.toString() + "You are now verified as ")
-                updatedComponentBuilder.append(formatRobloxData(robloxData))
-                player.sendMessage(*updatedComponentBuilder.create())
-
-                if (player != sender) {
-                    val componentBuilder = ComponentBuilder()
-                    componentBuilder.append(prefix)
-                    componentBuilder.append(ChatColor.GRAY.toString() + "Updated user " + player.displayName + " ")
-                    componentBuilder.append(formatRobloxData(robloxData))
-                    sender.sendMessage(*componentBuilder.create())
-                }
             }
             "verify" -> {
                 if (!sender.hasPermission("xethlyx.roblox.admin")) {
@@ -202,33 +195,12 @@ class CommandHandler: Command("roblox"), TabExecutor {
                     return
                 }
 
-                val metaSuccess = LuckPermsHelper.setRoblox(player, robloxData.id)
-                if (!metaSuccess) {
-                    sender.sendMessage(*internalError("Player internal data could not be fetched."))
-                    return
-                }
+                LuckPermsHelper.setRoblox(player.uuid, robloxData.id)
+                LuckPermsHelper.addGroup(player.uuid, true)
 
-                val groupSuccess = LuckPermsHelper.addGroup(player, true)
-                if (!groupSuccess) {
-                    sender.sendMessage(*internalError("Player internal data could not be fetched."))
-                    return
-                }
+                // MessagingHelper.updateUsername(player, robloxData.username)
 
-                MessagingHelper.updateUsername(player, robloxData.username)
-
-                val updatedComponentBuilder = ComponentBuilder()
-                updatedComponentBuilder.append(prefix)
-                updatedComponentBuilder.append(ChatColor.GRAY.toString() + "You are now verified as ")
-                updatedComponentBuilder.append(formatRobloxData(robloxData))
-                player.sendMessage(*updatedComponentBuilder.create())
-
-                if (player != sender) {
-                    val senderComponentBuilder = ComponentBuilder()
-                    senderComponentBuilder.append(prefix)
-                    senderComponentBuilder.append(ChatColor.GRAY.toString() + "Verified user " + player.displayName + " ")
-                    senderComponentBuilder.append(formatRobloxData(robloxData))
-                    sender.sendMessage(*senderComponentBuilder.create())
-                }
+                AnyPlayer.didVerifyPlayer(sender, player, robloxData)
             }
             "unverify" -> {
                 if (!sender.hasPermission("xethlyx.roblox.admin")) {
@@ -247,29 +219,10 @@ class CommandHandler: Command("roblox"), TabExecutor {
                     return
                 }
 
-                val metaSuccess = LuckPermsHelper.resetRoblox(player, true)
-                if (!metaSuccess) {
-                    sender.sendMessage(*internalError("Player internal data could not be fetched."))
-                    return
-                }
+                LuckPermsHelper.resetRoblox(player.uuid, true)
+                LuckPermsHelper.removeGroup(player.uuid, true)
 
-                val groupSuccess = LuckPermsHelper.removeGroup(player, true)
-                if (!groupSuccess) {
-                    sender.sendMessage(*internalError("Player internal data could not be fetched."))
-                    return
-                }
-
-                val updatedComponentBuilder = ComponentBuilder()
-                updatedComponentBuilder.append(prefix)
-                updatedComponentBuilder.append(ChatColor.GRAY.toString() + "You are now unverified.")
-                player.sendMessage(*updatedComponentBuilder.create())
-
-                if (player != sender) {
-                    val componentBuilder = ComponentBuilder()
-                    componentBuilder.append(prefix)
-                    componentBuilder.append(ChatColor.GRAY.toString() + "Unverified user " + player.displayName)
-                    sender.sendMessage(*componentBuilder.create())
-                }
+                AnyPlayer.didUnverifyPlayer(sender, player)
             }
             else -> {
                 sender.sendMessage(*invalidUsage(null))
